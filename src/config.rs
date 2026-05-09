@@ -1,42 +1,56 @@
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
-
 use crate::policy::Mode;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Config {
+    pub port: u16,
     pub mode: Mode,
+    pub model_path: String,
+    pub llama_server_bin: String,
+    pub llama_server_port: u16,
+    pub log_level: String,
 }
 
 impl Default for Config {
     fn default() -> Self {
-        Config {
+        let base = automode_dir();
+        Self {
+            port: 7878,
             mode: Mode::Mild,
+            model_path: base.join("models/bonsai.gguf").to_string_lossy().into(),
+            llama_server_bin: base.join("llama-server").to_string_lossy().into(),
+            llama_server_port: 8080,
+            log_level: "info".to_string(),
         }
     }
 }
 
-fn config_dir() -> PathBuf {
-    dirs::config_dir()
-        .unwrap_or_else(|| PathBuf::from("."))
-        .join("automode")
+pub fn automode_dir() -> PathBuf {
+    dirs::home_dir()
+        .expect("could not find home directory")
+        .join(".automode")
+}
+
+pub fn config_path() -> PathBuf {
+    automode_dir().join("config.toml")
 }
 
 pub fn pid_path() -> PathBuf {
-    config_dir().join("automode.pid")
+    automode_dir().join("automode.pid")
 }
 
 pub fn log_path() -> PathBuf {
-    config_dir().join("decisions.log")
+    automode_dir().join("logs/decisions.log")
 }
 
 pub fn policy_path() -> PathBuf {
-    config_dir().join("policy.toml")
+    automode_dir().join("policy.md")
 }
 
-fn config_path() -> PathBuf {
-    config_dir().join("config.toml")
+pub fn hook_path() -> PathBuf {
+    automode_dir().join("hook.sh")
 }
 
 pub fn load() -> Result<Config> {
@@ -44,15 +58,21 @@ pub fn load() -> Result<Config> {
     if !path.exists() {
         return Ok(Config::default());
     }
-    let content = std::fs::read_to_string(&path)?;
-    let cfg: Config = toml::from_str(&content)?;
-    Ok(cfg)
+    let s = std::fs::read_to_string(&path)?;
+    load_from_str(&s)
 }
 
 pub fn save(cfg: &Config) -> Result<()> {
-    let dir = config_dir();
-    std::fs::create_dir_all(&dir)?;
-    let content = toml::to_string(cfg)?;
-    std::fs::write(config_path(), content)?;
+    let path = config_path();
+    std::fs::create_dir_all(path.parent().unwrap())?;
+    std::fs::write(&path, save_to_string(cfg)?)?;
     Ok(())
+}
+
+pub fn load_from_str(s: &str) -> Result<Config> {
+    Ok(toml::from_str(s)?)
+}
+
+pub fn save_to_string(cfg: &Config) -> Result<String> {
+    Ok(toml::to_string_pretty(cfg)?)
 }
