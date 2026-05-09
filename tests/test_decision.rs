@@ -47,3 +47,14 @@ fn test_log_entry_formats_correctly() {
     assert!(line.contains("Bash"));
     assert!(line.contains("ls -la"));
 }
+
+use automode::llama_client::build_chat_messages;
+
+#[test]
+fn test_build_chat_messages_includes_policy_and_tool_call() {
+    let messages = build_chat_messages("Approve safe ops.", r#"{"tool":"Bash","input":{"command":"ls"}}"#);
+    assert_eq!(messages[0]["role"], "system");
+    assert!(messages[0]["content"].as_str().unwrap().contains("Approve safe ops."));
+    assert_eq!(messages[1]["role"], "user");
+    assert!(messages[1]["content"].as_str().unwrap().contains("ls"));
+}
