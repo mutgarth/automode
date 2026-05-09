@@ -1,6 +1,7 @@
 mod cli;
 mod config;
 mod decision;
+mod dev;
 mod llama_client;
 mod llama_process;
 mod policy;
@@ -23,6 +24,7 @@ async fn main() -> Result<()> {
         Commands::Status => print_status().await,
         Commands::Mode { name } => switch_mode(&name).await,
         Commands::Logs => tail_logs().await,
+        Commands::Dev => dev::run().await,
         Commands::Serve => server::run().await,
     }
 }

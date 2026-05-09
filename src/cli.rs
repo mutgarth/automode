@@ -21,6 +21,8 @@ pub enum Commands {
     Mode { name: String },
     /// Tail the decisions log
     Logs,
+    /// Local dev setup: self-install binary, download llama-server + model, then run setup
+    Dev,
     /// Internal: run the HTTP server (do not invoke directly)
     #[command(hide = true)]
     Serve,
