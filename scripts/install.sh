@@ -2,7 +2,7 @@
 set -euo pipefail
 
 AUTOMODE_REPO="https://github.com/YOUR_USERNAME/automode"
-LLAMA_REPO="https://github.com/ggerganov/llama.cpp"
+LLAMA_REPO="https://github.com/ggml-org/llama.cpp"
 MODEL_URL="https://huggingface.co/prism-ml/Bonsai-8B-gguf/resolve/main/Bonsai-8B-Q1_0.gguf"
 
 AUTOMODE_DIR="$HOME/.automode"
@@ -46,7 +46,7 @@ if [ -f "$AUTOMODE_DIR/llama-server" ]; then
   echo "→ llama-server already present, skipping."
 else
   echo "→ Fetching latest llama.cpp release tag..."
-  LLAMA_TAG=$(curl -s https://api.github.com/repos/ggerganov/llama.cpp/releases/latest \
+  LLAMA_TAG=$(curl -sL https://api.github.com/repos/ggml-org/llama.cpp/releases/latest \
     | grep '"tag_name"' | head -1 | cut -d'"' -f4)
 
   if [ -z "$LLAMA_TAG" ]; then

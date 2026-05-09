@@ -8,9 +8,9 @@ const MODEL_URL: &str =
     "https://huggingface.co/prism-ml/Bonsai-8B-gguf/resolve/main/Bonsai-8B-Q1_0.gguf";
 
 const LLAMA_API: &str =
-    "https://api.github.com/repos/ggerganov/llama.cpp/releases/latest";
+    "https://api.github.com/repos/ggml-org/llama.cpp/releases/latest";
 
-const LLAMA_REPO: &str = "https://github.com/ggerganov/llama.cpp";
+const LLAMA_REPO: &str = "https://github.com/ggml-org/llama.cpp";
 
 pub async fn run() -> Result<()> {
     println!("\nautomode dev setup");
@@ -31,6 +31,15 @@ pub async fn run() -> Result<()> {
         {
             use std::os::unix::fs::PermissionsExt;
             std::fs::set_permissions(&dest, std::fs::Permissions::from_mode(0o755))?;
+        }
+        // On macOS, copied binaries inherit a com.apple.provenance xattr that causes
+        // Gatekeeper to kill them with SIGKILL. Strip xattrs and re-sign ad-hoc.
+        #[cfg(target_os = "macos")]
+        {
+            let _ = Command::new("xattr").args(["-c", dest.to_str().unwrap()]).status();
+            let _ = Command::new("codesign")
+                .args(["--force", "--sign", "-", dest.to_str().unwrap()])
+                .status();
         }
         println!("✓ Binary installed → {}", dest.display());
     } else {
@@ -76,26 +85,14 @@ async fn download_llama_server(dest: &std::path::Path) -> Result<()> {
     let tmp = dest.parent().unwrap().join("llama-server.tar.gz");
     curl_download(&tar_url, &tmp, true)?;
 
-    // Extract just llama-server from the tarball
+    // Extract ALL files — llama-server needs its companion .dylib files on macOS
     let out_dir = dest.parent().unwrap();
-    let status = Command::new("tar")
+    Command::new("tar")
         .args(["-xzf", tmp.to_str().unwrap(),
                "--strip-components=1",
-               "-C", out_dir.to_str().unwrap(),
-               "--include=*/llama-server"])
-        .status();
-
-    // Fallback: extract all and find llama-server
-    if status.map(|s| !s.success()).unwrap_or(true) {
-        Command::new("tar")
-            .args(["-xzf", tmp.to_str().unwrap(), "-C", out_dir.to_str().unwrap()])
-            .status()?;
-        // Move llama-server to expected location if it ended up in a subdir
-        let nested = out_dir.join("build/bin/llama-server");
-        if nested.exists() && !dest.exists() {
-            std::fs::rename(&nested, dest)?;
-        }
-    }
+               "-C", out_dir.to_str().unwrap()])
+        .status()
+        .map_err(|e| anyhow!("tar extraction failed: {}", e))?;
 
     std::fs::remove_file(&tmp).ok();
 
