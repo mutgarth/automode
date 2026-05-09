@@ -1,5 +1,19 @@
 use automode::decision::{DecisionKind, HookResponse, LlmDecision, LogEntry};
 
+fn approve_response(reason: &str) -> HookResponse {
+    HookResponse::from(&LlmDecision {
+        decision: DecisionKind::Approve,
+        reason: reason.to_string(),
+    })
+}
+
+fn reject_response(reason: &str) -> HookResponse {
+    HookResponse::from(&LlmDecision {
+        decision: DecisionKind::Reject,
+        reason: reason.to_string(),
+    })
+}
+
 #[test]
 fn test_llm_decision_deserialize_approve() {
     let json = r#"{"decision":"approve","reason":"Read-only SELECT"}"#;
@@ -17,19 +31,17 @@ fn test_llm_decision_deserialize_reject() {
 
 #[test]
 fn test_hook_response_approve_serializes_correctly() {
-    let r = HookResponse { decision: DecisionKind::Approve, reason: None };
+    let r = approve_response("safe");
     let json = serde_json::to_string(&r).unwrap();
-    assert_eq!(json, r#"{"decision":"approve"}"#);
+    assert!(json.contains(r#""permissionDecision":"allow""#));
+    assert!(json.contains(r#""hookEventName":"PreToolUse""#));
 }
 
 #[test]
 fn test_hook_response_reject_includes_reason() {
-    let r = HookResponse {
-        decision: DecisionKind::Reject,
-        reason: Some("rm -rf is dangerous".to_string()),
-    };
+    let r = reject_response("rm -rf is dangerous");
     let json = serde_json::to_string(&r).unwrap();
-    assert!(json.contains("reject"));
+    assert!(json.contains(r#""permissionDecision":"deny""#));
     assert!(json.contains("rm -rf is dangerous"));
 }
 

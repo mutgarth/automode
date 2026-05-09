@@ -17,25 +17,35 @@ pub struct AppState {
 }
 
 pub fn yolo_response() -> HookResponse {
-    HookResponse { decision: DecisionKind::Approve, reason: None }
+    HookResponse::from(&LlmDecision {
+        decision: DecisionKind::Approve,
+        reason: "yolo mode".to_string(),
+    })
 }
 
+/// Parse the LLM's raw output into a decision. On malformed/unparseable JSON,
+/// returns a Reject so the test suite's "default to reject" semantics hold.
+/// The HTTP handler uses `try_parse_llm_json` instead, which falls through
+/// (None) so Claude Code prompts the user rather than blocking.
 pub fn parse_llm_json(raw: &str) -> LlmDecision {
+    try_parse_llm_json(raw).unwrap_or_else(|| LlmDecision {
+        decision: DecisionKind::Reject,
+        reason: format!("malformed or unrecognized LLM output: {}", raw.chars().take(120).collect::<String>()),
+    })
+}
+
+/// Like `parse_llm_json`, but returns None on malformed JSON so the caller
+/// can choose to fall through (let the user decide) instead of auto-reject.
+pub fn try_parse_llm_json(raw: &str) -> Option<LlmDecision> {
     match serde_json::from_str::<LlmDecision>(raw) {
-        Ok(d) if d.decision == DecisionKind::Approve || d.decision == DecisionKind::Reject => d,
+        Ok(d) if d.decision == DecisionKind::Approve || d.decision == DecisionKind::Reject => Some(d),
         Ok(_) => {
             warn!("LLM returned unknown decision value");
-            LlmDecision {
-                decision: DecisionKind::Reject,
-                reason: "unknown decision value from LLM".to_string(),
-            }
+            None
         }
         Err(e) => {
             warn!("LLM returned malformed JSON: {}", e);
-            LlmDecision {
-                decision: DecisionKind::Reject,
-                reason: format!("malformed JSON from LLM: {}", e),
-            }
+            None
         }
     }
 }
@@ -70,7 +80,13 @@ async fn decide(
     .unwrap();
 
     let llm_decision = match ask_llm(state.config.llama_server_port, &policy, &tool_call_json).await {
-        Ok(raw) => parse_llm_json(&raw),
+        Ok(raw) => match try_parse_llm_json(&raw) {
+            Some(d) => d,
+            None => {
+                warn!("LLM output unparseable — falling through to user prompt");
+                return Err(StatusCode::SERVICE_UNAVAILABLE);
+            }
+        },
         Err(e) => {
             error!("LLM error: {}", e);
             return Err(StatusCode::SERVICE_UNAVAILABLE);

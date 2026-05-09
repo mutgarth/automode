@@ -26,9 +26,24 @@ pub struct LlmDecision {
     pub reason: String,
 }
 
+/// Inner struct for Claude Code's PreToolUse hook output format.
+#[derive(Debug, Serialize)]
+pub struct HookSpecificOutput {
+    #[serde(rename = "hookEventName")]
+    pub hook_event_name: &'static str,
+    #[serde(rename = "permissionDecision")]
+    pub permission_decision: &'static str,
+    #[serde(rename = "permissionDecisionReason", skip_serializing_if = "Option::is_none")]
+    pub permission_decision_reason: Option<String>,
+}
+
 /// The JSON structure written to stdout by hook.sh (read by Claude Code).
+/// Uses the official `hookSpecificOutput` shape required for PreToolUse hooks.
 #[derive(Debug, Serialize)]
 pub struct HookResponse {
+    #[serde(rename = "hookSpecificOutput")]
+    pub hook_specific_output: HookSpecificOutput,
+    /// Mirror the decision at the top level for backward-compat readers (tests, curl).
     pub decision: DecisionKind,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub reason: Option<String>,
@@ -36,7 +51,16 @@ pub struct HookResponse {
 
 impl From<&LlmDecision> for HookResponse {
     fn from(d: &LlmDecision) -> Self {
+        let permission_decision = match d.decision {
+            DecisionKind::Approve => "allow",
+            DecisionKind::Reject => "deny",
+        };
         HookResponse {
+            hook_specific_output: HookSpecificOutput {
+                hook_event_name: "PreToolUse",
+                permission_decision,
+                permission_decision_reason: Some(d.reason.clone()),
+            },
             decision: d.decision.clone(),
             reason: if d.decision == DecisionKind::Reject {
                 Some(d.reason.clone())
