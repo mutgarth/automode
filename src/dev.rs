@@ -68,33 +68,41 @@ async fn download_llama_server(dest: &std::path::Path) -> Result<()> {
     let tag = fetch_llama_tag().await?;
     println!("→ Downloading llama-server {} for {}...", tag, llama_platform);
 
-    let zip_url = format!(
-        "{}/releases/download/{}/llama-{}-bin-{}.zip",
+    let tar_url = format!(
+        "{}/releases/download/{}/llama-{}-bin-{}.tar.gz",
         LLAMA_REPO, tag, tag, llama_platform
     );
 
-    let tmp = dest.parent().unwrap().join("llama-server.zip");
+    let tmp = dest.parent().unwrap().join("llama-server.tar.gz");
+    curl_download(&tar_url, &tmp, true)?;
 
-    curl_download(&zip_url, &tmp, true)?;
+    // Extract just llama-server from the tarball
+    let out_dir = dest.parent().unwrap();
+    let status = Command::new("tar")
+        .args(["-xzf", tmp.to_str().unwrap(),
+               "--strip-components=1",
+               "-C", out_dir.to_str().unwrap(),
+               "--include=*/llama-server"])
+        .status();
 
-    // Extract llama-server from the zip
-    let status = Command::new("unzip")
-        .args(["-j", tmp.to_str().unwrap(), "*/llama-server", "-d", dest.parent().unwrap().to_str().unwrap()])
-        .status()?;
-
-    if !status.success() {
-        // Try without the glob prefix (some releases have a flat structure)
-        Command::new("unzip")
-            .args(["-j", tmp.to_str().unwrap(), "llama-server", "-d", dest.parent().unwrap().to_str().unwrap()])
+    // Fallback: extract all and find llama-server
+    if status.map(|s| !s.success()).unwrap_or(true) {
+        Command::new("tar")
+            .args(["-xzf", tmp.to_str().unwrap(), "-C", out_dir.to_str().unwrap()])
             .status()?;
+        // Move llama-server to expected location if it ended up in a subdir
+        let nested = out_dir.join("build/bin/llama-server");
+        if nested.exists() && !dest.exists() {
+            std::fs::rename(&nested, dest)?;
+        }
     }
 
     std::fs::remove_file(&tmp).ok();
 
     if !dest.exists() {
         return Err(anyhow!(
-            "llama-server not found in zip — check the release at {}",
-            zip_url
+            "llama-server not found in archive — check the release at {}",
+            tar_url
         ));
     }
 
@@ -160,7 +168,7 @@ fn detect_platform() -> Result<(String, String)> {
 fn llama_platform_string(os: &str, arch: &str) -> Result<String> {
     match (os, arch) {
         ("macos", "aarch64") => Ok("macos-arm64".to_string()),
-        ("macos", "x86_64")  => Ok("macos-x86_64".to_string()),
+        ("macos", "x86_64")  => Ok("macos-x64".to_string()),
         ("linux", "x86_64")  => Ok("ubuntu-x64".to_string()),
         _ => Err(anyhow!("unsupported platform: {}-{}", os, arch)),
     }
