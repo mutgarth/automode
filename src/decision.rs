@@ -85,9 +85,12 @@ pub fn append_log(tool: &str, command: &str, d: &LlmDecision) -> Result<()> {
 }
 
 /// The JSON body from Claude Code's PreToolUse hook.
+/// Claude Code sends `tool_name` and `tool_input` (not `tool` and `input`).
 #[derive(Debug, Deserialize)]
 pub struct ToolCall {
+    #[serde(rename = "tool_name", alias = "tool")]
     pub tool: String,
+    #[serde(rename = "tool_input", alias = "input")]
     pub input: serde_json::Value,
 }
 
