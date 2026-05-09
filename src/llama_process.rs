@@ -47,13 +47,26 @@ impl LlamaProcess {
             .args([
                 "--model", &self.model,
                 "--port", &self.port.to_string(),
-                "--ctx-size", "512",
-                "--n-predict", "128",
+                // Edit tool calls can include multi-KB old_string/new_string.
+                // 8K ctx fits even very large diffs comfortably.
+                "--ctx-size", "8192",
+                "--n-predict", "256",
                 "--log-disable",
             ])
             .stdin(Stdio::null())
             .stdout(Stdio::null())
-            .stderr(Stdio::null())
+            // Pipe stderr to a log file so we can debug LLM errors after the fact.
+            .stderr(
+                std::fs::OpenOptions::new()
+                    .create(true)
+                    .append(true)
+                    .open(format!(
+                        "{}/logs/llama-server.log",
+                        dirs::home_dir().unwrap().join(".automode").display()
+                    ))
+                    .map(Stdio::from)
+                    .unwrap_or(Stdio::null()),
+            )
             .spawn()
             .map_err(|e| anyhow!("failed to start llama-server '{}': {}", self.bin, e))?;
         self.child = Some(child);

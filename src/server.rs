@@ -16,6 +16,27 @@ pub struct AppState {
     pub custom_policy: Option<String>,
 }
 
+/// Append a fall-through entry to ~/.automode/logs/failures.log so we can
+/// debug why specific commands didn't get an automatic decision.
+fn log_failure(tc: &ToolCall, raw: &str, reason: &str) -> std::io::Result<()> {
+    use std::io::Write;
+    let path = config::automode_dir().join("logs/failures.log");
+    std::fs::create_dir_all(path.parent().unwrap())?;
+    let mut f = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&path)?;
+    writeln!(
+        f,
+        "[{}] tool={} cmd={} | reason={} | raw={}",
+        chrono::Utc::now().to_rfc3339(),
+        tc.tool,
+        tc.command_str().chars().take(200).collect::<String>(),
+        reason,
+        raw.chars().take(500).collect::<String>(),
+    )
+}
+
 pub fn yolo_response() -> HookResponse {
     HookResponse::from(&LlmDecision {
         decision: DecisionKind::Approve,
@@ -83,12 +104,14 @@ async fn decide(
         Ok(raw) => match try_parse_llm_json(&raw) {
             Some(d) => d,
             None => {
-                warn!("LLM output unparseable — falling through to user prompt");
+                warn!("LLM output unparseable — falling through to user prompt. Raw: {:?}", raw);
+                let _ = log_failure(&tool_call, &raw, "unparseable LLM output");
                 return Err(StatusCode::SERVICE_UNAVAILABLE);
             }
         },
         Err(e) => {
             error!("LLM error: {}", e);
+            let _ = log_failure(&tool_call, "<no response>", &format!("{}", e));
             return Err(StatusCode::SERVICE_UNAVAILABLE);
         }
     };

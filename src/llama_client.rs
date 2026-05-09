@@ -21,11 +21,28 @@ pub async fn ask_llm(
     let client = reqwest::Client::new();
     let messages = build_chat_messages(policy, tool_call_json);
 
+    // Strict JSON schema — llama.cpp converts this to a grammar that constrains
+    // every token, so the model literally cannot produce malformed output.
     let body = json!({
         "model": "default",
         "messages": messages,
-        "response_format": {"type": "json_object"},
-        "max_tokens": 120,
+        "response_format": {
+            "type": "json_schema",
+            "json_schema": {
+                "name": "decision",
+                "strict": true,
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "decision": {"type": "string", "enum": ["approve", "reject"]},
+                        "reason":   {"type": "string"}
+                    },
+                    "required": ["decision", "reason"],
+                    "additionalProperties": false
+                }
+            }
+        },
+        "max_tokens": 256,
         "temperature": 0.0
     });
 
