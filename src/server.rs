@@ -44,11 +44,6 @@ async fn decide(
     State(state): State<Arc<AppState>>,
     body: String,
 ) -> Result<Json<HookResponse>, StatusCode> {
-    // Yolo: skip LLM entirely
-    if state.config.mode == Mode::Yolo {
-        return Ok(Json(yolo_response()));
-    }
-
     let tool_call: ToolCall = serde_json::from_str(&body).map_err(|e| {
         error!("failed to parse tool call JSON: {}", e);
         StatusCode::BAD_REQUEST
@@ -114,8 +109,8 @@ pub async fn run() -> Result<()> {
         custom_policy,
     });
 
-    // Start llama.cpp immediately (unless yolo)
-    if state.config.mode != Mode::Yolo {
+    // Start llama.cpp immediately — all modes use the LLM
+    {
         let mut llama = state.llama.lock().await;
         if let Err(e) = llama.start() {
             error!("warning: could not start llama-server at startup: {}", e);
