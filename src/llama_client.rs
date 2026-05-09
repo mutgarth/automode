@@ -1,6 +1,5 @@
 use anyhow::{anyhow, Result};
 use serde_json::{json, Value};
-use crate::decision::LlmDecision;
 
 pub fn build_chat_messages(policy: &str, tool_call_json: &str) -> Vec<Value> {
     vec![
@@ -12,11 +11,13 @@ pub fn build_chat_messages(policy: &str, tool_call_json: &str) -> Vec<Value> {
     ]
 }
 
+/// Calls llama.cpp and returns the raw JSON string from the LLM content field.
+/// Callers use parse_llm_json (in server.rs) to turn this into a LlmDecision.
 pub async fn ask_llm(
     llama_port: u16,
     policy: &str,
     tool_call_json: &str,
-) -> Result<LlmDecision> {
+) -> Result<String> {
     let client = reqwest::Client::new();
     let messages = build_chat_messages(policy, tool_call_json);
 
@@ -39,10 +40,8 @@ pub async fn ask_llm(
     let json: Value = resp.json().await
         .map_err(|e| anyhow!("failed to parse llama.cpp response: {}", e))?;
 
-    let content = json["choices"][0]["message"]["content"]
+    json["choices"][0]["message"]["content"]
         .as_str()
-        .ok_or_else(|| anyhow!("unexpected llama.cpp response shape: {}", json))?;
-
-    serde_json::from_str::<LlmDecision>(content)
-        .map_err(|e| anyhow!("LLM returned malformed JSON: {} — raw: {}", e, content))
+        .map(|s| s.to_string())
+        .ok_or_else(|| anyhow!("unexpected llama.cpp response shape: {}", json))
 }

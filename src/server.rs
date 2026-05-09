@@ -75,7 +75,7 @@ async fn decide(
     .unwrap();
 
     let llm_decision = match ask_llm(state.config.llama_server_port, &policy, &tool_call_json).await {
-        Ok(d) => d,
+        Ok(raw) => parse_llm_json(&raw),
         Err(e) => {
             error!("LLM error: {}", e);
             return Err(StatusCode::SERVICE_UNAVAILABLE);

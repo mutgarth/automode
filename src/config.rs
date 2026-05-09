@@ -29,7 +29,7 @@ impl Default for Config {
 
 pub fn automode_dir() -> PathBuf {
     dirs::home_dir()
-        .expect("could not find home directory")
+        .unwrap_or_else(|| std::path::PathBuf::from("/tmp"))
         .join(".automode")
 }
 
