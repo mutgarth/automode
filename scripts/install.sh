@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-AUTOMODE_REPO="https://github.com/YOUR_USERNAME/automode"
+AUTOMODE_REPO="https://github.com/mutgarth/automode"
 LLAMA_REPO="https://github.com/ggml-org/llama.cpp"
 MODEL_URL="https://huggingface.co/prism-ml/Bonsai-8B-gguf/resolve/main/Bonsai-8B-Q1_0.gguf"
 
