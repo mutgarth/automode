@@ -1,11 +1,57 @@
+use crate::policy::Mode;
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
-use crate::policy::Mode;
+
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum Target {
+    Claude,
+    Codex,
+    Antigravity,
+    Both,
+    All,
+}
+
+impl Default for Target {
+    fn default() -> Self {
+        Target::Claude
+    }
+}
+
+impl Target {
+    pub fn from_str(s: &str) -> Result<Target> {
+        match s {
+            "claude" => Ok(Target::Claude),
+            "codex" => Ok(Target::Codex),
+            "antigravity" => Ok(Target::Antigravity),
+            "both" => Ok(Target::Both),
+            "all" => Ok(Target::All),
+            other => Err(anyhow::anyhow!(
+                "unknown target '{}' — use: claude, codex, antigravity, both, all",
+                other
+            )),
+        }
+    }
+}
+
+impl std::fmt::Display for Target {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Target::Claude => write!(f, "claude"),
+            Target::Codex => write!(f, "codex"),
+            Target::Antigravity => write!(f, "antigravity"),
+            Target::Both => write!(f, "both"),
+            Target::All => write!(f, "all"),
+        }
+    }
+}
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Config {
     pub port: u16,
+    #[serde(default)]
+    pub target: Target,
     pub mode: Mode,
     pub model_path: String,
     pub llama_server_bin: String,
@@ -18,6 +64,7 @@ impl Default for Config {
         let base = automode_dir();
         Self {
             port: 7878,
+            target: Target::Claude,
             mode: Mode::Mild,
             model_path: base.join("models/bonsai.gguf").to_string_lossy().into(),
             llama_server_bin: base.join("llama-server").to_string_lossy().into(),
@@ -51,6 +98,14 @@ pub fn policy_path() -> PathBuf {
 
 pub fn hook_path() -> PathBuf {
     automode_dir().join("hook.sh")
+}
+
+pub fn codex_hook_path() -> PathBuf {
+    automode_dir().join("codex-hook.sh")
+}
+
+pub fn antigravity_hook_path() -> PathBuf {
+    automode_dir().join("antigravity-hook.sh")
 }
 
 pub fn load() -> Result<Config> {

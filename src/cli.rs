@@ -9,8 +9,12 @@ pub struct Cli {
 
 #[derive(Subcommand)]
 pub enum Commands {
-    /// Interactive onboarding — installs the Claude Code hook and selects a mode
-    Setup,
+    /// Interactive onboarding — installs Claude Code, Codex, or Antigravity hooks and selects a mode
+    Setup {
+        /// Integration target: claude | codex | antigravity | both | all
+        #[arg(long, default_value = "claude")]
+        target: String,
+    },
     /// Start the automode daemon and llama.cpp server in the background
     Start,
     /// Stop the running daemon
@@ -22,7 +26,11 @@ pub enum Commands {
     /// Tail the decisions log
     Logs,
     /// Local dev setup: self-install binary, download llama-server + model, then run setup
-    Dev,
+    Dev {
+        /// Integration target: claude | codex | antigravity | both | all
+        #[arg(long, default_value = "claude")]
+        target: String,
+    },
     /// Internal: run the HTTP server (do not invoke directly)
     #[command(hide = true)]
     Serve,

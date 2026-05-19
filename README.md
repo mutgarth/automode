@@ -1,8 +1,12 @@
 # automode
 
-A local Rust daemon that auto-approves Claude Code permission prompts using a local LLM.
+A local Rust daemon that auto-approves Claude Code, Codex, and Antigravity permission prompts using a local LLM.
 
 Claude Code asks for permission before running shell commands, editing files, etc. `automode` intercepts these prompts via the official `PreToolUse` hooks system, sends the tool call to a local LLM (Bonsai-8B running on llama.cpp), and lets the LLM decide whether to approve, reject, or fall through to the user.
+
+Codex support uses Codex's `PermissionRequest` hooks in `~/.codex/hooks.json` and returns Codex's hook-specific `allow`/`deny` decision format.
+
+Antigravity support uses Antigravity's `PreToolUse` hooks in `~/.gemini/config/hooks.json` and returns Antigravity's `allow`/`deny` decision format.
 
 The result: most decisions happen in ~500ms with no UI prompt. Catastrophic commands (e.g. `rm -rf ~`, `DROP DATABASE prod`) still get blocked. If the LLM can't decide, the prompt falls through normally — automode never makes things less safe than vanilla Claude Code.
 
@@ -61,6 +65,10 @@ cargo build --release
 
 ```
 automode setup       # Interactive onboarding — installs hook, picks mode
+automode setup --target codex
+automode setup --target both
+automode setup --target antigravity
+automode setup --target all
 automode start       # Start the daemon and llama-server in the background
 automode stop        # Stop everything cleanly
 automode status      # Show running state, mode, last decisions
@@ -69,7 +77,45 @@ automode logs        # Tail decisions.log
 automode dev         # Local-build setup (alternative to install.sh)
 ```
 
-After installation, **restart any open Claude Code sessions** so they pick up the hook.
+After installation, **restart any open Claude Code, Codex, or Antigravity sessions** so they pick up the hook.
+
+## Codex setup
+
+For Codex, run:
+
+```sh
+automode setup --target codex
+automode start
+```
+
+This installs `~/.automode/codex-hook.sh` and registers it in `~/.codex/hooks.json` under the `PermissionRequest` event. Claude Code remains the default target, so existing installs can continue using:
+
+```sh
+automode setup --target claude
+```
+
+To install both integrations against the same daemon:
+
+```sh
+automode setup --target both
+```
+
+## Antigravity setup
+
+For Antigravity, run:
+
+```sh
+automode setup --target antigravity
+automode start
+```
+
+This installs `~/.automode/antigravity-hook.sh` and registers it in `~/.gemini/config/hooks.json` under the `PreToolUse` event.
+
+To install Claude Code, Codex, and Antigravity against the same daemon:
+
+```sh
+automode setup --target all
+```
 
 ## File layout
 
@@ -79,6 +125,8 @@ After installation, **restart any open Claude Code sessions** so they pick up th
   llama-server           ← llama.cpp server binary
   *.dylib                ← llama.cpp shared libraries (macOS)
   hook.sh                ← Claude Code PreToolUse hook
+  codex-hook.sh          ← Codex PermissionRequest hook
+  antigravity-hook.sh    ← Antigravity PreToolUse hook
   config.toml            ← port, mode, paths, log level
   policy.md              ← active in custom mode
   models/

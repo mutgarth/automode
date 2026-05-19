@@ -12,7 +12,7 @@ const LLAMA_API: &str =
 
 const LLAMA_REPO: &str = "https://github.com/ggml-org/llama.cpp";
 
-pub async fn run() -> Result<()> {
+pub async fn run(target: &str) -> Result<()> {
     println!("\nautomode dev setup");
     println!("──────────────────────────────────────");
 
@@ -66,7 +66,7 @@ pub async fn run() -> Result<()> {
     println!("Running setup...\n");
 
     // 5. Run interactive setup
-    setup::run().await
+    setup::run(target).await
 }
 
 async fn download_llama_server(dest: &std::path::Path) -> Result<()> {

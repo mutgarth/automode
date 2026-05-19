@@ -18,13 +18,13 @@ async fn main() -> Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
-        Commands::Setup => setup::run().await,
+        Commands::Setup { target } => setup::run(&target).await,
         Commands::Start => start_daemon().await,
         Commands::Stop => stop_daemon().await,
         Commands::Status => print_status().await,
         Commands::Mode { name } => switch_mode(&name).await,
         Commands::Logs => tail_logs().await,
-        Commands::Dev => dev::run().await,
+        Commands::Dev { target } => dev::run(&target).await,
         Commands::Serve => server::run().await,
     }
 }
@@ -62,6 +62,7 @@ async fn print_status() -> Result<()> {
         .map(|p| format!("running (pid {})", p.trim()))
         .unwrap_or_else(|| "stopped".to_string());
     println!("status : {}", running);
+    println!("target : {}", cfg.target);
     println!("mode   : {}", cfg.mode);
     tail_logs().await
 }
