@@ -7,6 +7,8 @@
 [![Rust](https://img.shields.io/badge/built%20with-Rust-orange?logo=rust)](https://www.rust-lang.org/)
 [![llama.cpp](https://img.shields.io/badge/inference-llama.cpp-green)](https://github.com/ggerganov/llama.cpp)
 [![Claude Code](https://img.shields.io/badge/works%20with-Claude%20Code-blueviolet?logo=anthropic)](https://claude.ai/code)
+[![Codex](https://img.shields.io/badge/works%20with-Codex-black?logo=openai)](https://github.com/openai/codex)
+[![Antigravity](https://img.shields.io/badge/works%20with-Antigravity-4285F4?logo=google)](https://antigravity.google/)
 
 ---
 
