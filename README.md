@@ -2,6 +2,7 @@
 
 > **Auto-approve Claude Code permission prompts using a local LLM — no UI interruptions, ~500 ms decisions, fully private.**
 
+[![Latest release](https://img.shields.io/github/v/release/mutgarth/automode?label=release&color=brightgreen)](https://github.com/mutgarth/automode/releases/latest)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Rust](https://img.shields.io/badge/built%20with-Rust-orange?logo=rust)](https://www.rust-lang.org/)
 [![llama.cpp](https://img.shields.io/badge/inference-llama.cpp-green)](https://github.com/ggerganov/llama.cpp)
