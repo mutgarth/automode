@@ -20,7 +20,7 @@ jobs:
             target: aarch64-apple-darwin
 
           - platform: macos-x86_64
-            runner: macos-13        # Intel runner
+            runner: macos-14        # cross-compile x86_64 from Apple Silicon
             target: x86_64-apple-darwin
 
           - platform: linux-x86_64
