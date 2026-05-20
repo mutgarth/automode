@@ -4,8 +4,11 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 use tracing::{error, info, warn};
 
-use crate::config::{self, Config};
-use crate::decision::{append_log, DecisionKind, HookResponse, LlmDecision, ToolCall};
+use crate::config::{self, Config, Target};
+use crate::decision::{
+    append_log, AntigravityHookResponse, CodexPermissionResponse, DecisionKind, HookResponse,
+    LlmDecision, ToolCall,
+};
 use crate::llama_client::ask_llm;
 use crate::llama_process::LlamaProcess;
 use crate::policy::{policy_text, Mode};
@@ -51,7 +54,10 @@ pub fn yolo_response() -> HookResponse {
 pub fn parse_llm_json(raw: &str) -> LlmDecision {
     try_parse_llm_json(raw).unwrap_or_else(|| LlmDecision {
         decision: DecisionKind::Reject,
-        reason: format!("malformed or unrecognized LLM output: {}", raw.chars().take(120).collect::<String>()),
+        reason: format!(
+            "malformed or unrecognized LLM output: {}",
+            raw.chars().take(120).collect::<String>()
+        ),
     })
 }
 
@@ -59,7 +65,9 @@ pub fn parse_llm_json(raw: &str) -> LlmDecision {
 /// can choose to fall through (let the user decide) instead of auto-reject.
 pub fn try_parse_llm_json(raw: &str) -> Option<LlmDecision> {
     match serde_json::from_str::<LlmDecision>(raw) {
-        Ok(d) if d.decision == DecisionKind::Approve || d.decision == DecisionKind::Reject => Some(d),
+        Ok(d) if d.decision == DecisionKind::Approve || d.decision == DecisionKind::Reject => {
+            Some(d)
+        }
         Ok(_) => {
             warn!("LLM returned unknown decision value");
             None
@@ -74,7 +82,7 @@ pub fn try_parse_llm_json(raw: &str) -> Option<LlmDecision> {
 async fn decide(
     State(state): State<Arc<AppState>>,
     body: String,
-) -> Result<Json<HookResponse>, StatusCode> {
+) -> Result<Json<serde_json::Value>, StatusCode> {
     let tool_call: ToolCall = serde_json::from_str(&body).map_err(|e| {
         error!("failed to parse tool call JSON: {}", e);
         StatusCode::BAD_REQUEST
@@ -100,11 +108,15 @@ async fn decide(
     }))
     .unwrap();
 
-    let llm_decision = match ask_llm(state.config.llama_server_port, &policy, &tool_call_json).await {
+    let llm_decision = match ask_llm(state.config.llama_server_port, &policy, &tool_call_json).await
+    {
         Ok(raw) => match try_parse_llm_json(&raw) {
             Some(d) => d,
             None => {
-                warn!("LLM output unparseable — falling through to user prompt. Raw: {:?}", raw);
+                warn!(
+                    "LLM output unparseable — falling through to user prompt. Raw: {:?}",
+                    raw
+                );
                 let _ = log_failure(&tool_call, &raw, "unparseable LLM output");
                 return Err(StatusCode::SERVICE_UNAVAILABLE);
             }
@@ -121,8 +133,41 @@ async fn decide(
         warn!("failed to write decision log: {}", e);
     }
 
-    info!("{} | {} | {}", llm_decision.decision, tool_call.tool, command_str);
-    Ok(Json(HookResponse::from(&llm_decision)))
+    info!(
+        "{} | {} | {}",
+        llm_decision.decision, tool_call.tool, command_str
+    );
+    let is_codex_permission_request = tool_call
+        .hook_event_name
+        .as_deref()
+        .map(|event| event == "PermissionRequest")
+        .unwrap_or(false);
+    let is_antigravity_pre_tool_use = tool_call
+        .hook_event_name
+        .as_deref()
+        .map(|event| event == "AntigravityPreToolUse")
+        .unwrap_or(false);
+
+    let response = match (
+        &state.config.target,
+        is_codex_permission_request,
+        is_antigravity_pre_tool_use,
+    ) {
+        (Target::Antigravity, _, _) | (Target::All, _, true) => {
+            serde_json::to_value(AntigravityHookResponse::from(&llm_decision))
+        }
+        (Target::Codex, _, _) | (Target::Both, true, _) | (Target::All, true, _) => {
+            serde_json::to_value(CodexPermissionResponse::from(&llm_decision))
+        }
+        (Target::Claude, _, _) | (Target::Both, false, _) | (Target::All, false, false) => {
+            serde_json::to_value(HookResponse::from(&llm_decision))
+        }
+    }
+    .map_err(|e| {
+        error!("failed to serialize hook response: {}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+    Ok(Json(response))
 }
 
 pub async fn run() -> Result<()> {
@@ -140,7 +185,11 @@ pub async fn run() -> Result<()> {
         None
     };
 
-    let llama = LlamaProcess::new(&cfg.llama_server_bin, &cfg.model_path, cfg.llama_server_port);
+    let llama = LlamaProcess::new(
+        &cfg.llama_server_bin,
+        &cfg.model_path,
+        cfg.llama_server_port,
+    );
 
     let state = Arc::new(AppState {
         config: cfg,

@@ -1,6 +1,6 @@
 # automode
 
-> **Auto-approve Claude Code permission prompts using a local LLM — no UI interruptions, ~500 ms decisions, fully private.**
+> **Auto-approve Claude Code, Codex, and Antigravity permission prompts using a local LLM — no UI interruptions, ~500 ms decisions, fully private.**
 
 [![Latest release](https://img.shields.io/github/v/release/mutgarth/automode?label=release&color=brightgreen)](https://github.com/mutgarth/automode/releases/latest)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
@@ -85,14 +85,32 @@ cargo build --release
 ## Commands
 
 ```
-automode setup        Interactive onboarding — installs hook, picks mode
-automode start        Start the daemon and llama-server in the background
-automode stop         Stop everything cleanly
-automode status       Show running state, mode, and last decisions
-automode mode <name>  Switch to yolo | mild | strict | custom
-automode logs         Tail decisions.log
-automode dev          Local-build setup (skips GitHub release download)
+automode setup              Interactive onboarding — installs hook, picks mode
+automode setup --target T   T = claude (default) | codex | antigravity | both | all
+automode start              Start the daemon and llama-server in the background
+automode stop               Stop everything cleanly
+automode status             Show running state, mode, and last decisions
+automode mode <name>        Switch to yolo | mild | strict | custom
+automode logs               Tail decisions.log
+automode dev                Local-build setup (skips GitHub release download)
 ```
+
+After installation, **restart any open Claude Code, Codex, or Antigravity sessions** so they pick up the hook.
+
+---
+
+## Codex and Antigravity
+
+The same daemon can serve Codex (`PermissionRequest` hooks in `~/.codex/hooks.json`) and Antigravity (`PreToolUse` hooks in `~/.gemini/config/hooks.json`) alongside Claude Code. Each integration returns the host's native decision format.
+
+```sh
+automode setup --target codex         # Codex only
+automode setup --target antigravity   # Antigravity only
+automode setup --target both          # Claude Code + Codex
+automode setup --target all           # Claude Code + Codex + Antigravity
+```
+
+Claude Code remains the default target, so existing installs keep working unchanged.
 
 ---
 
@@ -135,6 +153,8 @@ The 1-bit Bonsai model is **1.16 GB on disk** and uses **~1 GB RAM** at runtime.
   llama-server        ← llama.cpp server binary
   *.dylib             ← llama.cpp shared libs (macOS)
   hook.sh             ← Claude Code PreToolUse hook
+  codex-hook.sh       ← Codex PermissionRequest hook (when --target includes codex)
+  antigravity-hook.sh ← Antigravity PreToolUse hook (when --target includes antigravity)
   config.toml         ← port, mode, paths, log level
   policy.md           ← active in custom mode
   models/
