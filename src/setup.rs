@@ -53,6 +53,13 @@ pub async fn run(target: &str) -> Result<()> {
         }
     }
 
+    install_target_hooks(&target)?;
+
+    println!("✓ Service configured. Run `automode start` to begin.");
+    Ok(())
+}
+
+pub(crate) fn install_target_hooks(target: &Target) -> Result<()> {
     match target {
         Target::Claude => {
             install_claude_hook()?;
@@ -94,12 +101,10 @@ pub async fn run(target: &str) -> Result<()> {
             println!("✓ Hook installed in ~/.gemini/config/hooks.json");
         }
     }
-
-    println!("✓ Service configured. Run `automode start` to begin.");
     Ok(())
 }
 
-fn install_claude_hook() -> Result<()> {
+pub(crate) fn install_claude_hook() -> Result<()> {
     let hook_src = include_str!("../scripts/hook.sh");
     let dest = hook_path();
     std::fs::write(&dest, hook_src)?;
@@ -112,7 +117,7 @@ fn install_claude_hook() -> Result<()> {
     Ok(())
 }
 
-fn install_codex_hook() -> Result<()> {
+pub(crate) fn install_codex_hook() -> Result<()> {
     let hook_src = include_str!("../scripts/codex-hook.sh");
     let dest = codex_hook_path();
     std::fs::write(&dest, hook_src)?;
@@ -125,7 +130,7 @@ fn install_codex_hook() -> Result<()> {
     Ok(())
 }
 
-fn install_antigravity_hook() -> Result<()> {
+pub(crate) fn install_antigravity_hook() -> Result<()> {
     let hook_src = include_str!("../scripts/antigravity-hook.sh");
     let dest = antigravity_hook_path();
     std::fs::write(&dest, hook_src)?;
@@ -138,7 +143,7 @@ fn install_antigravity_hook() -> Result<()> {
     Ok(())
 }
 
-fn patch_claude_settings() -> Result<()> {
+pub(crate) fn patch_claude_settings() -> Result<()> {
     let settings_path = dirs::home_dir().unwrap().join(".claude/settings.json");
 
     let hook_path_str = hook_path().to_string_lossy().to_string();
@@ -184,7 +189,7 @@ fn patch_claude_settings() -> Result<()> {
     Ok(())
 }
 
-fn patch_codex_hooks() -> Result<()> {
+pub(crate) fn patch_codex_hooks() -> Result<()> {
     let hooks_path = dirs::home_dir().unwrap().join(".codex/hooks.json");
 
     let hook_path_str = codex_hook_path().to_string_lossy().to_string();
@@ -240,7 +245,7 @@ fn patch_codex_hooks() -> Result<()> {
     Ok(())
 }
 
-fn patch_antigravity_hooks() -> Result<()> {
+pub(crate) fn patch_antigravity_hooks() -> Result<()> {
     let hooks_path = dirs::home_dir()
         .unwrap()
         .join(".gemini/config/hooks.json");

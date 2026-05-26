@@ -3,7 +3,7 @@ use std::net::TcpStream;
 use std::process::{Child, Command, Stdio};
 use std::time::Duration;
 use tokio::time::sleep;
-use tracing::{error, info, warn};
+use tracing::{info, warn};
 
 fn port_in_use(port: u16) -> bool {
     TcpStream::connect_timeout(

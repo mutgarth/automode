@@ -6,3 +6,4 @@ pub mod llama_process;
 pub mod policy;
 pub mod server;
 pub mod setup;
+pub mod update;

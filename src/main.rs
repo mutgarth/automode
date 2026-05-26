@@ -7,6 +7,7 @@ mod llama_process;
 mod policy;
 mod server;
 mod setup;
+mod update;
 
 use anyhow::Result;
 use clap::Parser;
@@ -25,6 +26,7 @@ async fn main() -> Result<()> {
         Commands::Mode { name } => switch_mode(&name).await,
         Commands::Logs => tail_logs().await,
         Commands::Dev { target } => dev::run(&target).await,
+        Commands::Update { target } => update::run(target.as_deref()).await,
         Commands::Serve => server::run().await,
     }
 }

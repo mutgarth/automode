@@ -31,6 +31,12 @@ pub enum Commands {
         #[arg(long, default_value = "claude")]
         target: String,
     },
+    /// Refresh the installed binary and hooks without changing mode or ports
+    Update {
+        /// Integration target: claude | codex | antigravity | both | all
+        #[arg(long)]
+        target: Option<String>,
+    },
     /// Internal: run the HTTP server (do not invoke directly)
     #[command(hide = true)]
     Serve,

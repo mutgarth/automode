@@ -95,6 +95,8 @@ automode status             Show running state, mode, and last decisions
 automode mode <name>        Switch to yolo | mild | strict | custom
 automode logs               Tail decisions.log
 automode dev                Local-build setup (skips GitHub release download)
+automode update             Refresh binary/hooks; preserve mode, ports, paths
+automode update --target T  Also set integration target: claude | codex | antigravity | both | all
 ```
 
 After installation, **restart any open Claude Code, Codex, or Antigravity sessions** so they pick up the hook.
@@ -113,6 +115,11 @@ automode setup --target all           # Claude Code + Codex + Antigravity
 ```
 
 Claude Code remains the default target, so existing installs keep working unchanged.
+
+Run `automode update` after upgrading automode or pulling a newer local build. It refreshes
+the installed binary and hook scripts, patches missing host hook files, migrates older
+configs to include an integration target, and preserves existing mode, ports, model path,
+and log settings. If no target is configured yet, update defaults to `all`.
 
 ---
 
