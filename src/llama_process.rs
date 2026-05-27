@@ -47,10 +47,11 @@ impl LlamaProcess {
             .args([
                 "--model", &self.model,
                 "--port", &self.port.to_string(),
-                // Edit tool calls can include multi-KB old_string/new_string.
-                // 8K ctx fits even very large diffs comfortably.
-                "--ctx-size", "8192",
-                "--n-predict", "256",
+                // Permission decisions are short and sequential; keep llama.cpp
+                // memory bounded instead of allocating multiple 8K slot caches.
+                "--ctx-size", "2048",
+                "--parallel", "1",
+                "--n-predict", "128",
                 "--log-disable",
             ])
             .stdin(Stdio::null())

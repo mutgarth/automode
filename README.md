@@ -150,7 +150,7 @@ Tested on Apple Silicon with Metal acceleration:
 | Simple command (`echo`, `ls`, `cat`) | ~500 ms |
 | Complex command (`for` loop, `$(...)`, multi-line) | ~600–700 ms |
 
-The 1-bit Bonsai model is **1.16 GB on disk** and uses **~1 GB RAM** at runtime. It runs entirely on-device — no data leaves your machine.
+The 1-bit Bonsai model is **1.16 GB on disk**. automode starts llama.cpp with one server slot, a 2K context, and 128 max predicted tokens to keep memory bounded for short permission decisions. It runs entirely on-device — no data leaves your machine.
 
 ---
 
